@@ -75,7 +75,7 @@ DEFAULT_CONFIG = {
     ],
     # SFT
     "sft_epochs": 1,
-    "sft_batch_size": 4,
+    "sft_batch_size": 2,
     "sft_lr": 2e-4,
     "sft_max_seq_len": 1024,
     "sft_score_floor": 0.80,
@@ -271,6 +271,7 @@ def train(cfg: dict) -> dict:
         torch_dtype=torch.bfloat16,
         device_map={"": 0},
         trust_remote_code=True,
+        attn_implementation="eager",  # required for Gemma2; uses less memory than sdpa
     )
 
     lora_cfg = LoraConfig(
@@ -309,6 +310,8 @@ def train(cfg: dict) -> dict:
         save_strategy="epoch",
         optim="adamw_torch",
         report_to="none",
+        gradient_checkpointing=True,
+        gradient_checkpointing_kwargs={"use_reentrant": False},
     )
     sft_trainer = SFTTrainer(
         model=model,
