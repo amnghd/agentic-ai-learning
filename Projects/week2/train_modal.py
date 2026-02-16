@@ -275,7 +275,9 @@ def train(cfg: dict) -> dict:
     model = AutoModelForCausalLM.from_pretrained(
         cfg["base_model"],
         quantization_config=bnb_config,
-        device_map="auto",
+        device_map={
+            "": 0
+        },  # single GPU; "auto" triggers dispatch_model which fails on 4-bit
         trust_remote_code=True,
     )
     model = prepare_model_for_kbit_training(model)
