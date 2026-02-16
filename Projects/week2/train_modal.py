@@ -224,7 +224,6 @@ def make_metrics_callback(log_every: int = 5):
     volumes={str(VOLUME_PATH): volume},
     secrets=[
         modal.Secret.from_name("huggingface"),
-        modal.Secret.from_name("openai", required=False),
     ],
 )
 def train(cfg: dict) -> dict:
