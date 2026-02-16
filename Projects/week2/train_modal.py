@@ -234,7 +234,6 @@ def train(cfg: dict) -> dict:
         AutoModelForCausalLM,
         AutoTokenizer,
         BitsAndBytesConfig,
-        TrainingArguments,
     )
     from peft import (
         LoraConfig,
@@ -242,7 +241,7 @@ def train(cfg: dict) -> dict:
         TaskType,
         prepare_model_for_kbit_training,
     )
-    from trl import SFTTrainer, DPOTrainer, DPOConfig
+    from trl import SFTTrainer, SFTConfig, DPOTrainer, DPOConfig
     from huggingface_hub import login
 
     # Auth
@@ -305,7 +304,7 @@ def train(cfg: dict) -> dict:
     print(f"SFT samples: {len(ds_sft):,}")
 
     sft_cb = make_metrics_callback(cfg["log_every"])
-    sft_args = TrainingArguments(
+    sft_args = SFTConfig(
         output_dir=str(model_dir / "sft"),
         num_train_epochs=cfg["sft_epochs"],
         per_device_train_batch_size=cfg["sft_batch_size"],
@@ -316,14 +315,14 @@ def train(cfg: dict) -> dict:
         save_strategy="epoch",
         optim="paged_adamw_8bit",
         report_to="none",
+        dataset_text_field="text",
+        max_seq_length=cfg["sft_max_seq_len"],
     )
     sft_trainer = SFTTrainer(
         model=model,
         args=sft_args,
         train_dataset=ds_sft,
-        tokenizer=tokenizer,
-        dataset_text_field="text",
-        max_seq_length=cfg["sft_max_seq_len"],
+        processing_class=tokenizer,
         callbacks=[sft_cb],
     )
     sft_trainer.train()
@@ -362,7 +361,7 @@ def train(cfg: dict) -> dict:
         args=dpo_config,
         train_dataset=split["train"],
         eval_dataset=split["test"],
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         callbacks=[dpo_cb],
     )
     dpo_trainer.train()
