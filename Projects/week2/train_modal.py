@@ -44,6 +44,7 @@ IMAGE = modal.Image.debian_slim(python_version="3.11").pip_install(
     "wandb>=0.16.0",
     "matplotlib>=3.8.0",
     "huggingface_hub>=0.21.0",
+    "rich>=13.0.0",
 )
 
 # Persistent volume — model checkpoints survive across runs
