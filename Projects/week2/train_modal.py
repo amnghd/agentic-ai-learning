@@ -309,14 +309,14 @@ def train(cfg: dict) -> dict:
         save_strategy="epoch",
         optim="adamw_torch",
         report_to="none",
-        dataset_text_field="text",
-        max_seq_length=cfg["sft_max_seq_len"],
     )
     sft_trainer = SFTTrainer(
         model=model,
         args=sft_args,
         train_dataset=ds_sft,
-        processing_class=tokenizer,
+        tokenizer=tokenizer,
+        dataset_text_field="text",
+        max_seq_length=cfg["sft_max_seq_len"],
         callbacks=[sft_cb],
     )
     sft_trainer.train()
@@ -355,7 +355,7 @@ def train(cfg: dict) -> dict:
         args=dpo_config,
         train_dataset=split["train"],
         eval_dataset=split["test"],
-        processing_class=tokenizer,
+        tokenizer=tokenizer,
         callbacks=[dpo_cb],
     )
     dpo_trainer.train()
