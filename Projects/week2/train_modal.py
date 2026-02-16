@@ -234,13 +234,11 @@ def train(cfg: dict) -> dict:
     from transformers import (
         AutoModelForCausalLM,
         AutoTokenizer,
-        BitsAndBytesConfig,
     )
     from peft import (
         LoraConfig,
         get_peft_model,
         TaskType,
-        prepare_model_for_kbit_training,
     )
     from trl import SFTTrainer, SFTConfig, DPOTrainer, DPOConfig
     from huggingface_hub import login
@@ -262,25 +260,18 @@ def train(cfg: dict) -> dict:
     print(f"Loaded {len(df_dpo):,} DPO pairs")
 
     # ── Load model ─────────────────────────────────────────────────────────
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16,
-        bnb_4bit_use_double_quant=True,
-    )
+    # A100 40 GB has plenty of room for a 2B model in bf16 (~4 GB).
+    # Skipping 4-bit quantization avoids bitsandbytes/accelerate version conflicts.
     tokenizer = AutoTokenizer.from_pretrained(cfg["base_model"], trust_remote_code=True)
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"
 
     model = AutoModelForCausalLM.from_pretrained(
         cfg["base_model"],
-        quantization_config=bnb_config,
-        device_map={
-            "": 0
-        },  # single GPU; "auto" triggers dispatch_model which fails on 4-bit
+        torch_dtype=torch.bfloat16,
+        device_map={"": 0},
         trust_remote_code=True,
     )
-    model = prepare_model_for_kbit_training(model)
 
     lora_cfg = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
@@ -316,7 +307,7 @@ def train(cfg: dict) -> dict:
         bf16=True,
         logging_steps=cfg["log_every"],
         save_strategy="epoch",
-        optim="paged_adamw_8bit",
+        optim="adamw_torch",
         report_to="none",
         dataset_text_field="text",
         max_seq_length=cfg["sft_max_seq_len"],
@@ -355,7 +346,7 @@ def train(cfg: dict) -> dict:
         save_steps=100,
         max_length=cfg["dpo_max_length"],
         max_prompt_length=512,
-        optim="paged_adamw_8bit",
+        optim="adamw_torch",
         report_to="none",
     )
     dpo_trainer = DPOTrainer(
